@@ -1,0 +1,60 @@
+version: '3.1'
+
+services:
+    postgres:
+        image: postgres:16.1-alpine3.18
+        restart: always
+        ports:
+            - '5432:5432'
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        environment:
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_DB=db
+    adminer:
+        image: adminer:4.8.1-standalone
+        restart: always
+        ports:
+            - 8080:8080
+    redis:
+        image: redis:7.0.11
+        restart: always
+        ports:
+            - '127.0.0.1:6379:6379'
+    kafka:
+        image: docker.io/bitnami/kafka:3.4
+        restart: always
+        ports:
+            - '9092:9092'
+            - '127.0.0.1:9094:9094'
+        volumes:
+            - 'kafka_data:/bitnami'
+        environment:
+            - ALLOW_PLAINTEXT_LISTENER=yes
+            - KAFKA_CFG_NODE_ID=0
+            - KAFKA_CFG_PROCESS_ROLES=controller,broker
+            - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+            - KAFKA_CFG_LISTENERS=INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+            - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:9092,EXTERNAL://127.0.0.1:9094
+            - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+            - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+            - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    neo4j:
+        image: neo4j:5.15.0-community-bullseye
+        restart: always
+        ports:
+            - '127.0.0.1:7474:7474'
+            - '127.0.0.1:7687:7687'
+        volumes:
+            - 'neo4j_data:/data'
+        environment:
+            - NEO4J_AUTH=neo4j/neo4j
+
+volumes:
+    kafka_data:
+        driver: local
+    neo4j_data:
+        driver: local
+    postgres_data:
+        driver: local

@@ -1,0 +1,249 @@
+openapi: '3.0.2'
+info:
+    title: API
+    version: '0.1'
+servers:
+    - url: https://some.url/
+      description: Production server
+    - url: http://some.local.url
+      description: Development server
+components:
+    parameters:
+        idParam:
+            name: id
+            in: path
+            description: Entity id
+            required: true
+            schema:
+                type: string
+    schemas:
+        Activity:
+            type: object
+            required:
+                - id
+                - name
+                - type
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                type:
+                    type: string
+                description:
+                    type: string
+                timestamp:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                timezoneOffset:
+                    type: integer
+                    minimum: 0
+                    maximum: 1000
+                location:
+                    type: string
+                coordinates:
+                    '$ref': '#/components/schemas/Location'
+        Activities:
+            type: array
+            items:
+                '$ref': '#/components/schemas/Activity'
+        Participants:
+            type: object
+            properties:
+                groups:
+                    type: array
+                    items:
+                        type: string
+                persons:
+                    type: array
+                    items:
+                        type: string
+        OkResponse:
+            type: object
+            required:
+                - statusCode
+                - reasonPhrase
+            properties:
+                statusCode:
+                    type: integer
+                reasonPhrase:
+                    type: string
+        ErrorResponse:
+            type: object
+            required:
+                - statusCode
+                - error
+                - message
+            properties:
+                status:
+                    type: integer
+                error:
+                    type: string
+                message:
+                    type: string
+        Location:
+            type: object
+            properties:
+                longitude:
+                    type: string
+                latitude:
+                    type: string
+        ActivityCreatedResponse:
+            allOf:
+                - '$ref': '#/components/schemas/OkResponse'
+                - type: object
+                  required:
+                      - id
+                  properties:
+                      id:
+                          type: string
+        ActivitiesResponse:
+            allOf:
+                - '$ref': '#/components/schemas/OkResponse'
+                - type: object
+                  required:
+                      - activities
+                  properties:
+                      activities:
+                          type: array
+                          items:
+                              '$ref': '#/components/schemas/Activity'
+paths:
+    /activities:
+        post:
+            requestBody:
+                description: Activity content with empty id
+                content:
+                    'application/json':
+                        schema:
+                            '$ref': '#/components/schemas/Activity'
+            responses:
+                '200':
+                    description: Activity successfully created, new activity id returned
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ActivityCreatedResponse'
+                '500':
+                    description: Activity creation failed due to internal server error
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'
+        get:
+            parameters:
+                - name: roles
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+            responses:
+                '200':
+                    description: Get activities list for a specified person
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ActivitiesResponse'
+
+                '500':
+                    description: Activities list was not fetched due to internal error
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'
+        put:
+            requestBody:
+                description: Update activity / activities content
+                content:
+                    'application/json':
+                        schema:
+                            oneOf:
+                                - '$ref': '#/components/schemas/Activity'
+                                - '$ref': '#/components/schemas/Activities'
+            responses:
+                '200':
+                    description: Activity successfully updated, data saved to cache
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/OkResponse'
+                '500':
+                    description: Activity creation failed due to internal server error
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'
+    /activities/{id}/participants:
+        get:
+            parameters:
+                - '$ref': '#/components/parameters/idParam'
+            responses:
+                '200':
+                    description: Persons and groups invited to the activity
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/Participants'
+                '500':
+                    description: Unable to fetch persons for the specified activity
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'
+    /activities/{id}/states:
+        post:
+            parameters:
+                - '$ref': '#/components/parameters/idParam'
+            requestBody:
+                description: Change activity state
+                content:
+                    'application/json':
+                        schema:
+                            type: object
+                            required:
+                                - transition
+                            properties:
+                                transition:
+                                    type: string
+                                    enum: [scheduled, cancelled, running, finished]
+            responses:
+                '200':
+                    description: Activity state changed
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/OkResponse'
+                '500':
+                    description: Activity state change failed
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'
+    /activities/{id}/invitations:
+        post:
+            requestBody:
+                description: Person accepts invitations to an activity
+                content:
+                    'application/json':
+                        schema:
+                            type: object
+                            required:
+                                - decision
+                            properties:
+                                decision:
+                                    type: string
+                                    enum: [accept, decline, tentative]
+            responses:
+                '200':
+                    description: Activity was accepted, data updated accordingly
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/OkResponse'
+                '500':
+                    description: Activity was not accepted due to internal error
+                    content:
+                        'application/json':
+                            schema:
+                                '$ref': '#/components/schemas/ErrorResponse'

@@ -1,0 +1,11 @@
+node_modules
+build
+src/types/openapi*
+customer-journeys.md
+src/routes/core.ts
+certs/*
+deploy/temp/*
+env/*
+scripts/.env
+.env
+nodemon-kafka-debug.json
